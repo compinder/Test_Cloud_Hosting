@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Data Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        h2 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #responseMessage {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        #userDataDisplay {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+        }
+        #userDataDisplay ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #userDataDisplay li {
+            background-color: #f8f9fa;
+            margin-bottom: 8px;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>User Data Management</h2>
+
+        <h3>Save New User Data</h3>
+        <form id="userDataForm">
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName" required>
+
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName" required>
+
+            <label for="age">Age:</label>
+            <input type="number" id="age" name="age" required>
+
+            <button type="submit">Save Data</button>
+        </form>
+        <div id="responseMessage"></div>
+
+        <hr style="margin: 30px 0;">
+
+        <h3>Fetch All User Data</h3>
+        <button id="fetchDataButton">Fetch Data</button>
+        <div id="userDataDisplay">
+            <h4>Loaded Users:</h4>
+            <ul id="userList">
+                <li>No data loaded yet.</li>
+            </ul>
+            <div id="fetchResponseMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        // IMPORTANT: Replace with your actual API Gateway Endpoint URL
+        const API_GATEWAY_URL = 'YOUR_API_GATEWAY_ENDPOINT_HERE'; 
+
+        document.getElementById('userDataForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const age = document.getElementById('age').value;
+
+            const userData = {
+                firstName: firstName,
+                lastName: lastName,
+                age: parseInt(age) // Ensure age is a number
+            };
+
+            const responseMessageDiv = document.getElementById('responseMessage');
+            responseMessageDiv.className = ''; // Clear previous classes
+            responseMessageDiv.textContent = 'Saving data...';
+
+            try {
+                const response = await fetch(API_GATEWAY_URL, {
+                    method: 'POST', // Use POST for saving data (SET)
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    responseMessageDiv.textContent = 'Data saved successfully! ID: ' + result.id;
+                    responseMessageDiv.classList.add('success');
+                    document.getElementById('userDataForm').reset(); // Clear form
+                } else {
+                    responseMessageDiv.textContent = 'Error saving data: ' + (result.message || 'Unknown error');
+                    responseMessageDiv.classList.add('error');
+                }
+            } catch (error) {
+                console.error('Network or CORS error:', error);
+                responseMessageDiv.textContent = 'Network or server error. Check console.';
+                responseMessageDiv.classList.add('error');
+            }
+        });
+
+        document.getElementById('fetchDataButton').addEventListener('click', async function() {
+            const userList = document.getElementById('userList');
+            const fetchResponseMessage = document.getElementById('fetchResponseMessage');
+            userList.innerHTML = '<li>Loading data...</li>'; // Clear and show loading
+            fetchResponseMessage.className = '';
+            fetchResponseMessage.textContent = '';
+
+            try {
+                const response = await fetch(API_GATEWAY_URL, {
+                    method: 'GET' // Use GET for fetching data
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data && data.users && data.users.length > 0) {
+                        userList.innerHTML = ''; // Clear loading message
+                        data.users.forEach(user => {
+                            const listItem = document.createElement('li');
+                            listItem.textContent = `ID: ${user.id || 'N/A'}, Name: ${user.firstName} ${user.lastName}, Age: ${user.age}`;
+                            userList.appendChild(listItem);
+                        });
+                        fetchResponseMessage.textContent = 'Data loaded successfully.';
+                        fetchResponseMessage.classList.add('success');
+                    } else {
+                        userList.innerHTML = '<li>No users found.</li>';
+                        fetchResponseMessage.textContent = 'No data available from backend.';
+                        fetchResponseMessage.classList.add('success'); // Still a success, just no data
+                    }
+                } else {
+                    userList.innerHTML = '<li>Error loading data.</li>';
+                    fetchResponseMessage.textContent = 'Error fetching data: ' + (data.message || 'Unknown error');
+                    fetchResponseMessage.classList.add('error');
+                }
+            } catch (error) {
+                console.error('Network or CORS error:', error);
+                userList.innerHTML = '<li>Error loading data.</li>';
+                fetchResponseMessage.textContent = 'Network or server error. Check console.';
+                fetchResponseMessage.classList.add('error');
+            }
+        });
+    </script>
+</body>
+</html>
